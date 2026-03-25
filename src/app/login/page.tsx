@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { User, Loader2 } from "lucide-react";
+import { User, Loader2, Copy, Check } from "lucide-react";
 
 type View = "main" | "telegram";
 
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [nextPath, setNextPath] = useState("/");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -99,7 +100,14 @@ export default function LoginPage() {
     }
   }
 
-  const botName = process.env.NEXT_PUBLIC_TELEGRAM_BOT || "SmartHomeDemoBot";
+  const botName = process.env.NEXT_PUBLIC_TELEGRAM_BOT || "vasilekdemobot";
+
+  function handleCopy() {
+    navigator.clipboard.writeText(telegramCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-5 py-10">
@@ -159,11 +167,23 @@ export default function LoginPage() {
               </a>
             </p>
 
-            <div className="bg-white/5 border border-white/10 rounded-lg py-4 px-6 mb-4">
+            <button
+              onClick={handleCopy}
+              className="w-full bg-white/5 border border-white/10 rounded-lg py-4 px-6 mb-4 flex items-center justify-center gap-3 hover:bg-white/10 transition-colors cursor-pointer"
+            >
               <span className="text-3xl font-mono font-bold text-white tracking-[0.3em]">
                 {telegramCode}
               </span>
-            </div>
+              {copied ? (
+                <Check className="w-5 h-5 text-green-400 shrink-0" />
+              ) : (
+                <Copy className="w-5 h-5 text-gray-500 shrink-0" />
+              )}
+            </button>
+
+            <p className="text-xs text-gray-600 mb-4">
+              {copied ? "Скопировано" : "Нажмите чтобы скопировать"}
+            </p>
 
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-5">
               <Loader2 className="w-4 h-4 animate-spin" />
