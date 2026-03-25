@@ -16,7 +16,11 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("auth_token")?.value;
 
-  if (isPublicAsset(pathname) || pathname.startsWith("/api")) {
+  if (
+    isPublicAsset(pathname) ||
+    pathname.startsWith("/api") ||
+    pathname === "/health"
+  ) {
     return NextResponse.next();
   }
 

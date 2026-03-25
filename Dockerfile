@@ -45,8 +45,8 @@ RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
-# Expose ports
-EXPOSE 3000 3001
+# Expose Next.js port only
+EXPOSE 3000
 
-# Start both servers using the startup script
+# Start Next.js server using the startup script
 CMD ["node", "server/start.js"]
