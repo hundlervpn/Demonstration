@@ -1,74 +1,82 @@
-// In-memory OTP store for email authentication
-// In production, use Redis or a database
+// Telegram login code store + session management
 
-interface OTPEntry {
+interface TelegramLoginEntry {
   code: string;
-  email: string;
-  expiresAt: number;
-  attempts: number;
+  verified: boolean;
+  telegramUser?: string;
+  telegramId?: number;
+  createdAt: number;
 }
 
-const otpStore = new Map<string, OTPEntry>();
+const telegramCodeStore = new Map<string, TelegramLoginEntry>();
+const CODE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
-const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_ATTEMPTS = 5;
-
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
+export function generateLoginCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
 }
 
-function normalizeOtpCode(code: string): string {
-  return code.trim();
-}
+export function createTelegramLogin(): { code: string } {
+  // Clean up expired codes
+  const now = Date.now();
+  for (const [key, entry] of telegramCodeStore.entries()) {
+    if (now - entry.createdAt > CODE_EXPIRY_MS) {
+      telegramCodeStore.delete(key);
+    }
+  }
 
-export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-export function storeOTP(email: string, code: string): void {
-  const normalizedEmail = normalizeEmail(email);
-  otpStore.set(normalizedEmail, {
-    code: normalizeOtpCode(code),
-    email: normalizedEmail,
-    expiresAt: Date.now() + OTP_EXPIRY_MS,
-    attempts: 0,
+  const code = generateLoginCode();
+  telegramCodeStore.set(code, {
+    code,
+    verified: false,
+    createdAt: Date.now(),
   });
+  return { code };
 }
 
-export function verifyOTP(email: string, code: string): { valid: boolean; error?: string } {
-  const normalizedEmail = normalizeEmail(email);
-  const normalizedCode = normalizeOtpCode(code);
-  const entry = otpStore.get(normalizedEmail);
-
-  if (!entry) {
-    return { valid: false, error: "Код не найден. Запросите новый." };
+export function verifyTelegramCode(
+  code: string,
+  telegramUser: string,
+  telegramId: number
+): boolean {
+  const entry = telegramCodeStore.get(code.toUpperCase());
+  if (!entry) return false;
+  if (Date.now() - entry.createdAt > CODE_EXPIRY_MS) {
+    telegramCodeStore.delete(code.toUpperCase());
+    return false;
   }
+  entry.verified = true;
+  entry.telegramUser = telegramUser;
+  entry.telegramId = telegramId;
+  return true;
+}
 
-  if (Date.now() > entry.expiresAt) {
-    otpStore.delete(normalizedEmail);
-    return { valid: false, error: "Код истёк. Запросите новый." };
+export function checkTelegramCode(code: string): {
+  verified: boolean;
+  telegramUser?: string;
+  expired?: boolean;
+} {
+  const entry = telegramCodeStore.get(code.toUpperCase());
+  if (!entry) return { verified: false, expired: true };
+  if (Date.now() - entry.createdAt > CODE_EXPIRY_MS) {
+    telegramCodeStore.delete(code.toUpperCase());
+    return { verified: false, expired: true };
   }
-
-  if (entry.attempts >= MAX_ATTEMPTS) {
-    otpStore.delete(normalizedEmail);
-    return { valid: false, error: "Слишком много попыток. Запросите новый код." };
+  if (entry.verified) {
+    telegramCodeStore.delete(code.toUpperCase());
+    return { verified: true, telegramUser: entry.telegramUser };
   }
-
-  entry.attempts++;
-
-  if (entry.code !== normalizedCode) {
-    return { valid: false, error: "Неверный код." };
-  }
-
-  // Valid — clean up
-  otpStore.delete(normalizedEmail);
-  return { valid: true };
+  return { verified: false };
 }
 
 // Session token generation
 export function generateSessionToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
   for (let i = 0; i < 64; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -76,24 +84,24 @@ export function generateSessionToken(): string {
 }
 
 // Simple session store
-const sessionStore = new Map<string, { email: string; isGuest: boolean; createdAt: number }>();
+const sessionStore = new Map<string, { user: string; isGuest: boolean; createdAt: number }>();
 
-export function createSession(email: string, isGuest: boolean): string {
+export function createSession(user: string, isGuest: boolean): string {
   const token = generateSessionToken();
   sessionStore.set(token, {
-    email,
+    user,
     isGuest,
     createdAt: Date.now(),
   });
   return token;
 }
 
-export function validateSession(token: string): { valid: boolean; email?: string; isGuest?: boolean } {
+export function validateSession(token: string): { valid: boolean; user?: string; isGuest?: boolean } {
   const session = sessionStore.get(token);
   if (!session) {
     return { valid: false };
   }
-  return { valid: true, email: session.email, isGuest: session.isGuest };
+  return { valid: true, user: session.user, isGuest: session.isGuest };
 }
 
 export function destroySession(token: string): void {
