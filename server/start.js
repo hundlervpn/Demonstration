@@ -10,7 +10,7 @@ console.log('WebSocket server is disabled in demo startup.');
 const nextServer = spawn('node', [path.join(__dirname, '..', 'server.js')], {
   stdio: 'inherit',
   cwd: path.join(__dirname, '..'),
-  env: { ...process.env, NODE_ENV: 'production' }
+  env: { ...process.env, NODE_ENV: 'production', HOSTNAME: '0.0.0.0', PORT: '3000' }
 });
 
 // Handle shutdown
