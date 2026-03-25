@@ -1,0 +1,18 @@
+node_modules/
+.next/
+out/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.venv
+.worktrees/
+temp/figma_redisign
+
+# Face database (keep structure, ignore images)
+faces/*.jpg
+faces/*.png
+faces/*.jpeg
+!faces/.gitkeep
+!faces/README.md
