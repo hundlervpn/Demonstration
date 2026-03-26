@@ -19,7 +19,7 @@ RUN npm run build
 RUN mkdir -p /app/public
 
 # Production stage
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 
 WORKDIR /app
 
@@ -28,13 +28,16 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install Python and CV dependencies
-RUN apk add --no-cache python3 py3-pip glib libgomp libstdc++ libgcc libjpeg-turbo libpng
-RUN pip install --no-cache --break-system-packages --upgrade pip setuptools wheel && \
-    pip install --no-cache --break-system-packages websockets opencv-python-headless face_recognition ultralytics numpy
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-dev build-essential cmake \
+    libglib2.0-0 libgomp1 libjpeg62-turbo libpng16-16 \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir --break-system-packages --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir --break-system-packages websockets opencv-python-headless face_recognition ultralytics numpy
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs nextjs
 
 # Copy necessary files from builder
 COPY --from=builder /app/public ./public
