@@ -9,10 +9,11 @@
     "lint": "eslint .",
     "clean": "next clean",
     "ws-server": "npx tsx server/websocket-server.ts",
-    "cv-client": "conda run -n guard python cv-websocket-client.py",
+    "cv-client": "/opt/homebrew/Caskroom/miniconda/base/envs/guard/bin/python -u cv-websocket-client.py",
     "dev:all": "concurrently \"npm run dev\" \"npm run ws-server\"",
-    "dev:all:cv": "concurrently \"npm run dev\" \"npm run ws-server\" \"npm run cv-client\"",
-    "test:ws": "node scripts/test-websocket-client.js"
+    "dev:all:cv": "concurrently \"npm run dev\" \"npm run ws-server\" \"/opt/homebrew/Caskroom/miniconda/base/envs/guard/bin/python -u cv-websocket-client.py\"",
+    "test:ws": "node scripts/test-websocket-client.js",
+    "test:rgb": "node scripts/test-rgb-strip.js"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
@@ -20,7 +21,6 @@
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "concurrently": "^8.2.2",
     "lucide-react": "^0.553.0",
     "motion": "^12.23.24",
     "next": "^15.4.9",
@@ -28,8 +28,9 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "tailwind-merge": "^3.3.1",
+    "ws": "^8.19.0",
     "tsx": "^4.7.0",
-    "ws": "^8.19.0"
+    "concurrently": "^8.2.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",

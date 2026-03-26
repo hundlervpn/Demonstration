@@ -9,6 +9,17 @@ coverage/
 .venv
 .worktrees/
 temp/figma_redisign
+.temp
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Runtime data
+data/
+
+# ML models
+yolov8n.pt
+*.pt
 
 # Face database (keep structure, ignore images)
 faces/*.jpg

@@ -4,31 +4,11 @@
 
 ## Запуск
 
-## Демо-версия с авторизацией
-
-В демо добавлена авторизация на главном экране:
-- вход по email-коду через Resend API;
-- гостевой вход (ограниченный по времени).
-
-### Настройка переменных окружения
-
-Создайте файл `.env` на основе `.env.example` и задайте ключ Resend:
-
-```env
-APP_URL=http://localhost:3000
-RESEND_API_KEY=re_xxxxxxxxx
-```
-
-Обязательно замените `re_xxxxxxxxx` на ваш реальный API-ключ Resend.
-
 ### Docker (Рекомендуется)
 
 ```bash
 docker build -t smart-home .
-docker run -p 3000:3000 -p 3001:3001 \
-  -e APP_URL=http://localhost:3000 \
-  -e RESEND_API_KEY=re_xxxxxxxxx \
-  smart-home
+docker run -p 3000:3000 -p 3001:3001 smart-home
 ```
 
 Откройте http://localhost:3000

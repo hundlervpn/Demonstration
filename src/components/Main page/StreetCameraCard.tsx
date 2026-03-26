@@ -21,8 +21,8 @@ export function StreetCameraCard() {
   };
 
   return (
-    <section className="h-full rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl shadow-black/40 overflow-hidden">
-      <div className="relative h-full min-h-[16rem]">
+    <section className="rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl shadow-black/40 overflow-hidden">
+      <div className="relative min-h-[16rem]">
         {/* Video Stream or Placeholder */}
         {frame ? (
           <img
@@ -31,7 +31,7 @@ export function StreetCameraCard() {
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               {connected ? (
                 <Camera className="w-16 h-16 text-zinc-500" />

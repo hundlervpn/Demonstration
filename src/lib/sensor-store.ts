@@ -174,8 +174,8 @@ export const roomToDeviceMap: Record<string, string> = {
 };
 
 // Gas sensor thresholds (ppm)
-export const GAS_THRESHOLD_SAFE = 200;
-export const GAS_THRESHOLD_WARNING = 300;
+export const GAS_THRESHOLD_SAFE = 360;
+export const GAS_THRESHOLD_WARNING = 400;
 
 export function getGasStatus(value: number): "safe" | "warning" | "danger" {
   if (value < GAS_THRESHOLD_SAFE) return "safe";

@@ -23,23 +23,34 @@ last_sent_name = None
 last_sent_time = 0
 MIN_SEND_INTERVAL = 2  # Minimum seconds between same-name messages
 
-# Load face encodings
+# Face database state
 known_encodings = []
 known_names = []
-print("Loading face database...")
 
-if not os.path.exists(FACES_DIR):
-    os.makedirs(FACES_DIR)
+def load_faces():
+    """Load (or reload) face encodings from faces directory"""
+    global known_encodings, known_names
 
-for file in os.listdir(FACES_DIR):
-    if file.endswith(('.jpg', '.png', '.jpeg')):
-        img = face_recognition.load_image_file(f"{FACES_DIR}/{file}")
-        encs = face_recognition.face_encodings(img)
-        if encs:
-            known_encodings.append(encs[0])
-            known_names.append(os.path.splitext(file)[0].capitalize())
+    if not os.path.exists(FACES_DIR):
+        os.makedirs(FACES_DIR)
 
-print(f"Ready! Database contains: {known_names}")
+    loaded_encodings = []
+    loaded_names = []
+    for file in os.listdir(FACES_DIR):
+        if file.endswith(('.jpg', '.png', '.jpeg')):
+            img = face_recognition.load_image_file(f"{FACES_DIR}/{file}")
+            encs = face_recognition.face_encodings(img)
+            if encs:
+                loaded_encodings.append(encs[0])
+                loaded_names.append(os.path.splitext(file)[0].capitalize())
+
+    known_encodings = loaded_encodings
+    known_names = loaded_names
+    print(f"[FaceDB] Loaded. Database contains: {known_names}", flush=True)
+
+print("Loading face database...", flush=True)
+load_faces()
+print(f"Ready! Database contains: {known_names}", flush=True)
 
 # Initialize YOLO and camera
 model = YOLO('yolov8n.pt')
@@ -72,26 +83,43 @@ async def send_face_event(websocket, name):
 
     try:
         await websocket.send(json.dumps(message))
-        print(f"[WebSocket] Sent face event: {name}")
+        print(f"[WebSocket] Sent face event: {name}", flush=True)
         last_sent_name = name
         last_sent_time = current_time
     except Exception as e:
         print(f"[WebSocket] Error sending message: {e}")
 
+async def listen_for_commands(ws):
+    """Listen for incoming server commands (e.g. reload_faces)"""
+    try:
+        async for raw in ws:
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if msg.get("type") == "reload_faces":
+                print("[FaceDB] Reload command received, reloading...", flush=True)
+                try:
+                    load_faces()
+                except Exception as e:
+                    print(f"[FaceDB] Reload error: {e}", flush=True)
+    except Exception as e:
+        print(f"[WebSocket] Listener stopped: {e}", flush=True)
+
 async def reconnect_with_backoff(url, max_attempts=10):
     """Reconnect with exponential backoff"""
     for attempt in range(1, max_attempts + 1):
         try:
-            print(f"[WebSocket] Attempting to connect (attempt {attempt}/{max_attempts})...")
+            print(f"[WebSocket] Attempting to connect (attempt {attempt}/{max_attempts})...", flush=True)
             ws = await websockets.connect(url)
-            print(f"[WebSocket] Connected to server")
+            print(f"[WebSocket] Connected to server", flush=True)
             return ws
         except Exception as e:
             wait_time = min(2 ** attempt, 30)  # Max 30 seconds
-            print(f"[WebSocket] Connection failed: {e}. Retrying in {wait_time}s...")
+            print(f"[WebSocket] Connection failed: {e}. Retrying in {wait_time}s...", flush=True)
             await asyncio.sleep(wait_time)
 
-    print("[WebSocket] Max reconnection attempts reached")
+    print("[WebSocket] Max reconnection attempts reached", flush=True)
     return None
 
 async def main():
@@ -103,6 +131,7 @@ async def main():
         print("[ERROR] Could not connect to WebSocket server")
         return
 
+    listener_task = asyncio.create_task(listen_for_commands(ws))
     last_detected_name = None
 
     while cap.isOpened():
@@ -171,7 +200,7 @@ async def main():
                 }
                 await ws.send(json.dumps(video_message))
             except Exception as e:
-                print(f"[WebSocket] Error sending video frame: {e}")
+                print(f"[WebSocket] Error sending video frame: {e}", flush=True)
 
         # Check for face changes and send WebSocket message
         if current_faces:
@@ -187,7 +216,11 @@ async def main():
             await send_face_event(ws, "Searching...")
             last_detected_name = None
 
+        # Yield to event loop — allows listen_for_commands to process incoming messages
+        await asyncio.sleep(0)
+
     cap.release()
+    listener_task.cancel()
 
 if __name__ == "__main__":
     try:

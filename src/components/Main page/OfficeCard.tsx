@@ -1,14 +1,50 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
-import { ChevronRight, Thermometer, Droplet, Flame } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { ChevronRight, Thermometer, Droplet, Flame, Lightbulb, Sun } from "lucide-react";
+import { useSensorData, wsManager, useDeviceState } from "@/hooks/useSensorData";
+import { useAmbientSound } from "@/hooks/useAmbientSound";
+import { LIGHT_PRESETS } from "@/lib/office-light-presets";
+import { CLIMATE_TARGETS, toEspThresholds } from "@/lib/office-climate-presets";
+
+const OFFICE_DEVICE_ID = "esp_office_01";
 
 type OfficeMode = "focus" | "rest" | "manual" | "off";
 
 export function OfficeCard() {
   const [mode, setMode] = useState<OfficeMode>("focus");
-  const [manualTemp, setManualTemp] = useState(22);
-  const [manualHumidity, setManualHumidity] = useState(45);
+  const [manualTemp, setManualTemp] = useState(CLIMATE_TARGETS.manual.temp);
+  const [manualHumidity, setManualHumidity] = useState(CLIMATE_TARGETS.manual.humidity);
+  const [manualBrightness, setManualBrightness] = useState(180);
+  const [manualColorTemp, setManualColorTemp] = useState(4000);
+
+  const climateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sendLightCommand = useCallback((state: boolean, brightness?: number, colorTemp?: number) => {
+    if (lightDebounceRef.current) clearTimeout(lightDebounceRef.current);
+    lightDebounceRef.current = setTimeout(() => {
+      wsManager.send({
+        type: "device_command",
+        device: "office_light",
+        action: "set_state",
+        state,
+        ...(brightness !== undefined && { brightness }),
+        ...(colorTemp !== undefined && { colorTemp }),
+      });
+    }, 150);
+  }, []);
+
+  const sendClimateThresholds = useCallback((targetTemp: number, targetHumidity: number) => {
+    if (climateDebounceRef.current) clearTimeout(climateDebounceRef.current);
+    climateDebounceRef.current = setTimeout(() => {
+      wsManager.send({
+        type: "settings_sync",
+        device: "office",
+        settings: toEspThresholds(targetTemp, targetHumidity),
+      });
+    }, 150);
+  }, []);
 
   const getModeColor = (currentMode: OfficeMode) => {
     switch (currentMode) {
@@ -47,11 +83,23 @@ export function OfficeCard() {
     }
   };
 
-  // Mock data - will be replaced with real WebSocket data
-  const currentTemp = 22;
-  const currentHumidity = 45;
-  const windowOpen = false;
-  const humidifierOn = false;
+  const { playModeSound } = useAmbientSound();
+  const tempData = useSensorData(OFFICE_DEVICE_ID, "temperature");
+  const humData = useSensorData(OFFICE_DEVICE_ID, "humidity");
+  const humidifier = useDeviceState("office_humidifier");
+  const conditioner = useDeviceState("window");
+
+  const parseSensorValue = (val: number | boolean | string | undefined): number => {
+    if (val === undefined || val === null) return 0;
+    if (typeof val === "number") return val;
+    const n = parseFloat(String(val));
+    return isNaN(n) ? 0 : n;
+  };
+
+  const currentTemp = parseSensorValue(tempData.data?.value) || 22;
+  const currentHumidity = parseSensorValue(humData.data?.value) || 45;
+  const windowOpen = conditioner.isOn;
+  const humidifierOn = humidifier.isOn;
 
   return (
     <Link href="/office" className="block h-full">
@@ -74,7 +122,24 @@ export function OfficeCard() {
                   key={m}
                   onClick={(e) => {
                     e.preventDefault();
-                    setMode(m as OfficeMode);
+                    const newMode = m as OfficeMode;
+                    setMode(newMode);
+                    playModeSound(newMode);
+                    const preset = LIGHT_PRESETS[newMode];
+                    wsManager.send({
+                      type: "device_command",
+                      device: "office_light",
+                      action: "set_state",
+                      state: preset.state,
+                      ...(preset.brightness !== undefined && { brightness: preset.brightness }),
+                      ...(preset.colorTemp !== undefined && { colorTemp: preset.colorTemp }),
+                    });
+                    if (newMode === "focus" || newMode === "rest") {
+                      sendClimateThresholds(CLIMATE_TARGETS[newMode].temp, CLIMATE_TARGETS[newMode].humidity);
+                    } else if (newMode === "manual") {
+                      sendLightCommand(true, manualBrightness, manualColorTemp);
+                      sendClimateThresholds(manualTemp, manualHumidity);
+                    }
                   }}
                   className={`p-2.5 rounded-xl transition-all border ${
                     mode === m
@@ -130,10 +195,10 @@ export function OfficeCard() {
                     <div className="text-xs text-gray-400 mb-1">Целевые значения</div>
                     <div className="flex gap-4">
                       <span className={`text-xs ${getModeTextColor(mode)}`}>
-                        {mode === "focus" ? "🌡 20°C" : "🌡 23°C"}
+                        {`🌡 ${CLIMATE_TARGETS[mode as "focus" | "rest"].temp}°C`}
                       </span>
                       <span className={`text-xs ${getModeTextColor(mode)}`}>
-                        {mode === "focus" ? "💧 45%" : "💧 55%"}
+                        {`💧 ${CLIMATE_TARGETS[mode as "focus" | "rest"].humidity}%`}
                       </span>
                     </div>
                   </div>
@@ -143,18 +208,22 @@ export function OfficeCard() {
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="flex items-center gap-2">
                     <Thermometer className="w-4 h-4 text-orange-400" />
-                    <span className="text-sm text-white">{currentTemp}°C</span>
+                    <span className="text-sm text-white">
+                      {tempData.loading ? "..." : `${currentTemp.toFixed(1)}°C`}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Droplet className="w-4 h-4 text-cyan-400" />
-                    <span className="text-sm text-white">{currentHumidity}%</span>
+                    <span className="text-sm text-white">
+                      {humData.loading ? "..." : `${currentHumidity.toFixed(0)}%`}
+                    </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center gap-1">
-                    <span className="text-gray-500">Окно:</span>
+                    <span className="text-gray-500">Кондиционер:</span>
                     <span className={windowOpen ? "text-blue-400" : "text-gray-400"}>
-                      {windowOpen ? "Открыто" : "Закрыто"}
+                      {windowOpen ? "Вкл" : "Выкл"}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -185,7 +254,11 @@ export function OfficeCard() {
                       min="16"
                       max="28"
                       value={manualTemp}
-                      onChange={(e) => setManualTemp(parseInt(e.target.value))}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        setManualTemp(v);
+                        sendClimateThresholds(v, manualHumidity);
+                      }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.preventDefault()}
                       className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-amber-500 hover:accent-amber-400"
@@ -206,11 +279,95 @@ export function OfficeCard() {
                       min="30"
                       max="70"
                       value={manualHumidity}
-                      onChange={(e) => setManualHumidity(parseInt(e.target.value))}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        setManualHumidity(v);
+                        sendClimateThresholds(manualTemp, v);
+                      }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.preventDefault()}
                       className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-amber-500 hover:accent-amber-400"
                     />
+                  </div>
+
+                  {/* Device toggles */}
+                  <div className="pt-2 border-t border-white/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                    <div className="text-xs text-gray-400 mb-2">Устройства</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); conditioner.toggle(); }}
+                        className={`p-2.5 rounded-xl border transition-all ${
+                          windowOpen ? "bg-blue-500/20 border-blue-500" : "bg-black/40 border-white/10"
+                        }`}
+                      >
+                        <Thermometer className="w-4 h-4 mx-auto mb-1" />
+                        <span className="text-xs block">Кондиционер</span>
+                        <span className="text-[10px] block text-gray-400">{windowOpen ? "Вкл" : "Выкл"}</span>
+                      </button>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); humidifier.toggle(); }}
+                        className={`p-2.5 rounded-xl border transition-all ${
+                          humidifierOn ? "bg-cyan-500/20 border-cyan-500" : "bg-black/40 border-white/10"
+                        }`}
+                      >
+                        <Droplet className="w-4 h-4 mx-auto mb-1" />
+                        <span className="text-xs block">Увлажнитель</span>
+                        <span className="text-[10px] block text-gray-400">{humidifierOn ? "Вкл" : "Выкл"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Light sliders */}
+                  <div className="pt-2 border-t border-white/10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="w-3.5 h-3.5 text-yellow-400" />
+                      <span className="text-xs text-gray-400">Освещение</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-400">Яркость</span>
+                          <span className="text-xs text-amber-400 font-medium">{Math.round(manualBrightness / 2.55)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="255"
+                          value={manualBrightness}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            setManualBrightness(v);
+                            sendLightCommand(true, v, manualColorTemp);
+                          }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.preventDefault()}
+                          className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                        />
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1">
+                            <Sun className="w-3 h-3 text-orange-300" />
+                            <span className="text-xs text-gray-400">Цв. температура</span>
+                          </div>
+                          <span className="text-xs text-orange-300 font-medium">{manualColorTemp}K</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="2700"
+                          max="6500"
+                          value={manualColorTemp}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            setManualColorTemp(v);
+                            sendLightCommand(true, manualBrightness, v);
+                          }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.preventDefault()}
+                          className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-orange-400"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

@@ -2,7 +2,8 @@
 import { TopBar } from "@/components/TopBar";
 import { PageTransition } from "@/components/PageTransition";
 import { Send, Database, CheckCircle2, UserPlus, Trash2, Sliders, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { wsManager } from "@/hooks/useSensorData";
 
 type FaceRole = "admin" | "resident" | "guest" | "courier" | "technician";
 
@@ -13,6 +14,7 @@ interface FaceProfile {
   addedDate: string;
 }
 
+
 export default function SettingsPage() {
   const [notifications, setNotifications] = useState([
     { id: 'water', label: "Протечки воды", checked: true },
@@ -21,10 +23,15 @@ export default function SettingsPage() {
     { id: 'system', label: "Системные события", checked: false },
   ]);
 
-  const [faceProfiles, setFaceProfiles] = useState<FaceProfile[]>([
-    { id: '1', name: "Администратор", role: "admin", addedDate: "24.02.2026" },
-    { id: '2', name: "Адам", role: "resident", addedDate: "23.02.2026" },
-  ]);
+  const [faceProfiles, setFaceProfiles] = useState<FaceProfile[]>([]);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/faces")
+      .then((r) => r.json())
+      .then((data) => setFaceProfiles(data))
+      .catch(() => {});
+  }, []);
 
   const [tempDelta, setTempDelta] = useState(1.5);
   const [humidityDelta, setHumidityDelta] = useState(5);
@@ -57,19 +64,36 @@ export default function SettingsPage() {
     }
   };
 
-  const deleteProfile = (id: string) => {
-    setFaceProfiles(profiles => profiles.filter(p => p.id !== id));
+  const deleteProfile = async (id: string) => {
+    setFaceProfiles((prev) => prev.filter((p) => p.id !== id));
+    await fetch(`/api/faces?id=${id}`, { method: "DELETE" }).catch(() => {});
   };
 
-  const addProfile = () => {
+  const addProfile = async (file: File) => {
     if (faceProfiles.length >= 10) return;
-    const newId = (faceProfiles.length + 1).toString();
-    setFaceProfiles([...faceProfiles, {
-      id: newId,
-      name: "Новый профиль",
-      role: "guest",
-      addedDate: new Date().toLocaleDateString('ru-RU')
-    }]);
+    const name = file.name.replace(/\.[^.]+$/, "");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("name", name);
+    formData.append("role", "guest");
+    const res = await fetch("/api/faces", {
+      method: "POST",
+      body: formData,
+    }).catch(() => null);
+    if (res?.ok) {
+      const profile = await res.json();
+      setFaceProfiles((prev) => [...prev, profile]);
+    }
+  };
+
+  const saveClimateSettings = () => {
+    wsManager.send({
+      type: "settings_sync",
+      device: "office",
+      settings: { tempDelta, humidityDelta },
+    });
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 2000);
   };
 
   return (
@@ -131,7 +155,7 @@ export default function SettingsPage() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file && faceProfiles.length < 10) {
-                  addProfile();
+                  addProfile(file);
                 }
               }}
               disabled={faceProfiles.length >= 10}
@@ -217,6 +241,21 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          <button
+            onClick={saveClimateSettings}
+            className={`mt-4 w-full py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+              settingsSaved
+                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                : "bg-amber-500 hover:bg-amber-600 text-white"
+            }`}
+          >
+            {settingsSaved ? (
+              <><Check className="w-4 h-4" /> Сохранено</>
+            ) : (
+              "Сохранить настройки"
+            )}
+          </button>
         </section>
 
         {/* Telegram */}

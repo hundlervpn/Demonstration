@@ -19,6 +19,9 @@ export default function EventsPage() {
   const [filterRoom, setFilterRoom] = useState<string>("all");
   const [filterType, setFilterType] = useState<string[]>(["info", "warning", "alert"]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const rooms = ["all", "Прихожая", "Кабинет", "Кухня", "Ванная", "Улица"];
 
@@ -77,6 +80,12 @@ export default function EventsPage() {
     return () => unsubscribe();
   }, []);
 
+  // Parse "DD.MM.YYYY" to a Date for comparison
+  const parseEventDate = (dateStr: string): Date => {
+    const [d, m, y] = dateStr.split(".");
+    return new Date(`${y}-${m}-${d}`);
+  };
+
   const filteredEvents = events.filter((event) => {
     const roomMatch = filterRoom === "all" || event.room === filterRoom;
     const typeMatch = filterType.includes(event.type);
@@ -85,7 +94,14 @@ export default function EventsPage() {
       event.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.room.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return roomMatch && typeMatch && searchMatch;
+    let dateMatch = true;
+    if (dateFrom || dateTo) {
+      const eventDate = parseEventDate(event.date);
+      if (dateFrom) dateMatch = dateMatch && eventDate >= new Date(dateFrom);
+      if (dateTo) dateMatch = dateMatch && eventDate <= new Date(dateTo);
+    }
+
+    return roomMatch && typeMatch && searchMatch && dateMatch;
   });
 
   const getTypeColor = (type: string) => {
@@ -203,11 +219,49 @@ export default function EventsPage() {
         <section className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 shadow-xl shadow-black/40">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium">События ({filteredEvents.length})</h3>
-            <button className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+            <button
+              onClick={() => setShowDatePicker((v) => !v)}
+              className={`flex items-center gap-2 text-sm transition-colors ${
+                showDatePicker || dateFrom || dateTo
+                  ? "text-blue-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
               <Calendar className="w-4 h-4" />
-              Выбрать период
+              {dateFrom || dateTo ? "Период выбран" : "Выбрать период"}
             </button>
           </div>
+
+          {showDatePicker && (
+            <div className="bg-black/40 border border-white/5 rounded-2xl p-4 mb-4 flex flex-wrap gap-4 items-end">
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-xs text-gray-400 mb-1">С даты</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 text-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+              </div>
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-xs text-gray-400 mb-1">По дату</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 text-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+              </div>
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setDateFrom(""); setDateTo(""); }}
+                  className="px-4 py-2 rounded-xl text-sm bg-gray-700/50 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+                >
+                  Сбросить
+                </button>
+              )}
+            </div>
+          )}
 
           {filteredEvents.length === 0 ? (
             <div className="text-center py-12 text-gray-500">

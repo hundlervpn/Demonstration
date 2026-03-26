@@ -9,7 +9,7 @@ const GAS_DEVICE_ID = "esp_kitchen_01";
 const FAN_DEVICE_ID = "kitchen_fan";
 
 export default function KitchenPage() {
-  const { value, isSafe, status, loading, hasData } = useGasSensor(GAS_DEVICE_ID);
+  const { value, isSafe, status, loading, hasData, history } = useGasSensor(GAS_DEVICE_ID);
   const fanState = useDeviceState(FAN_DEVICE_ID);
 
   const [fanAuto, setFanAuto] = useState(true);
@@ -30,9 +30,7 @@ export default function KitchenPage() {
     fanIsOnRef.current = fanState.isOn;
   });
 
-  // Determine if fan should be on based on gas levels and manual/auto mode
-  const fanShouldBeOn = !isSafe || simulateLeak || (!fanAuto && fanState.isOn);
-  const fanIsOn = fanState.isOn || (!isSafe || simulateLeak);
+  const fanIsOn = fanState.isOn;
 
   // Auto mode: turn fan on when gas level is unsafe, off when safe
   useEffect(() => {
@@ -89,9 +87,17 @@ export default function KitchenPage() {
     return "bg-red-500/20 border-red-500";
   };
 
-  // Mock history data
-  const getHistoryData = () => {
-    return [40, 45, 42, 50, 48, 45, 43, 40, 42, 45, 48, 50, 45, 42, 40];
+  // Build chart data from real sensor history (last 15 readings)
+  const getHistoryData = (): number[] => {
+    if (history.length === 0) return [40, 45, 42, 50, 48, 45, 43, 40, 42, 45, 48, 50, 45, 42, 40];
+    const recent = history.slice(0, 15).reverse();
+    const values = recent.map((h) => {
+      const v = typeof h.value === "string" ? parseFloat(h.value) : Number(h.value);
+      return isNaN(v) ? 0 : v;
+    });
+    const maxVal = Math.max(...values, 1);
+    // Scale to percentage height (5% min so bars are always visible)
+    return values.map((v) => Math.max(5, Math.round((v / maxVal) * 95)));
   };
 
   return (
@@ -133,9 +139,10 @@ export default function KitchenPage() {
 
           <div className="flex items-end gap-1 h-32">
             {getHistoryData().map((h: number, i: number) => {
+              // Color based on percentage (green < 40%, yellow 40–70%, red > 70%)
               let barColor = "bg-green-400";
               if (h > 70) barColor = "bg-red-400";
-              else if (h > 50) barColor = "bg-yellow-400";
+              else if (h > 40) barColor = "bg-yellow-400";
 
               return (
                 <div
@@ -177,7 +184,7 @@ export default function KitchenPage() {
             >
               <div className={`w-2 h-2 rounded-full ${fanAuto ? "bg-blue-400" : "bg-amber-400"}`} />
               <span className={`text-xs font-medium ${fanAuto ? "text-blue-400" : "text-amber-400"}`}>
-                {fanAuto ? "Авто" : "Ручно"}
+                {fanAuto ? "Авто" : "Ручное"}
               </span>
               {!fanAuto && (
                 <span className="text-xs text-gray-500">← авто</span>
@@ -199,12 +206,11 @@ export default function KitchenPage() {
                 fanState.toggle();
               }
             }}
-            disabled={!isSafe && !simulateLeak}
             className={`w-full p-4 rounded-2xl flex items-center justify-center gap-4 transition-all ${
               fanIsOn
                 ? "bg-green-500/20 border border-green-500 text-green-400"
                 : "bg-black/40 border border-white/5 text-gray-400 hover:bg-white/10"
-            } ${!isSafe && !simulateLeak ? "opacity-50" : ""}`}
+            }`}
           >
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${fanIsOn ? "bg-green-500/20" : "bg-gray-700"}`}>
               <Wind className={`w-6 h-6 ${fanIsOn && !isSafe ? "animate-spin" : ""}`} />
