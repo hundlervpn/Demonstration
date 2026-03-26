@@ -28,7 +28,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install Python and CV dependencies
-RUN apk add --no-cache python3 py3-pip libglib libgomp libstdc++ libgcc libjpeg-turbo libpng
+RUN apk add --no-cache python3 py3-pip glib libgomp libstdc++ libgcc libjpeg-turbo libpng
 RUN pip install --no-cache websockets opencv-python-headless face_recognition ultralytics numpy
 
 # Create non-root user
