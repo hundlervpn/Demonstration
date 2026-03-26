@@ -35,8 +35,6 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
@@ -48,8 +46,8 @@ RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
-# Expose ports
-EXPOSE 3000 3001
+# Expose port
+EXPOSE 3000
 
-# Start both servers using the startup script
-CMD ["node", "server/start.js"]
+# Start Next.js standalone server
+CMD ["node", "server.js"]
