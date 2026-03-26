@@ -1,0 +1,29 @@
+node_modules/
+.next/
+out/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.venv
+.worktrees/
+temp/figma_redisign
+.temp
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Runtime data
+data/
+
+# ML models
+yolov8n.pt
+*.pt
+
+# Face database (keep structure, ignore images)
+faces/*.jpg
+faces/*.png
+faces/*.jpeg
+!faces/.gitkeep
+!faces/README.md
