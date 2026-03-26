@@ -29,7 +29,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install Python and CV dependencies
 RUN apk add --no-cache python3 py3-pip glib libgomp libstdc++ libgcc libjpeg-turbo libpng
-RUN pip install --no-cache --break-system-packages websockets opencv-python-headless face_recognition ultralytics numpy
+RUN pip install --no-cache --break-system-packages --upgrade pip setuptools wheel && \
+    pip install --no-cache --break-system-packages websockets opencv-python-headless face_recognition ultralytics numpy
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
