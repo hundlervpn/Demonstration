@@ -162,6 +162,58 @@ class WebSocketManager {
 // Singleton instance
 const wsManager = new WebSocketManager();
 
+// Demo mode: mock data returned when WebSocket is unavailable
+const MOCK_FALLBACK_MS = 2000;
+
+const MOCK_SENSOR_DATA: Record<string, SensorData> = {
+  esp_office_01_temperature: {
+    value: 22.4,
+    timestamp: new Date().toISOString(),
+    history: Array.from({ length: 15 }, (_, i) => ({
+      value: String(21 + Math.sin(i / 3) * 2),
+      timestamp: new Date(Date.now() - i * 60000).toISOString(),
+    })),
+  },
+  esp_office_01_humidity: {
+    value: 47,
+    timestamp: new Date().toISOString(),
+    history: Array.from({ length: 15 }, (_, i) => ({
+      value: String(45 + Math.cos(i / 4) * 5),
+      timestamp: new Date(Date.now() - i * 60000).toISOString(),
+    })),
+  },
+  esp_kitchen_01_gas: {
+    value: 42,
+    timestamp: new Date().toISOString(),
+    history: Array.from({ length: 15 }, (_, i) => ({
+      value: String(35 + Math.random() * 20),
+      timestamp: new Date(Date.now() - i * 60000).toISOString(),
+    })),
+  },
+  esp_hallway_01_motion: {
+    value: "clear",
+    timestamp: new Date().toISOString(),
+    history: [
+      { value: "detected", timestamp: new Date(Date.now() - 180000).toISOString() },
+      { value: "clear", timestamp: new Date(Date.now() - 120000).toISOString() },
+    ],
+  },
+  esp_bathroom_01_water_leak: {
+    value: "dry",
+    timestamp: new Date().toISOString(),
+    history: [],
+  },
+};
+
+const MOCK_DEVICE_STATES: Record<string, string> = {
+  kitchen_fan: "off",
+  office_humidifier: "off",
+  window: "off",
+  valve: "open",
+  hall_light: "on",
+  office_light: "on",
+};
+
 // Hook for generic sensor data
 export function useSensorData(
   deviceId: string,
@@ -171,6 +223,7 @@ export function useSensorData(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const usedMockRef = useRef(false);
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -217,11 +270,26 @@ export function useSensorData(
       setConnected(wsManager.isConnected() || false);
     }, 1000);
 
+    // Mock data fallback: if no real data arrives, use demo values
+    const mockTimeout = setTimeout(() => {
+      if (!usedMockRef.current) {
+        usedMockRef.current = true;
+        const sensorKey = `${deviceId}_${sensorType}`;
+        const mock = MOCK_SENSOR_DATA[sensorKey];
+        if (mock) {
+          setData(mock);
+          setLoading(false);
+          setConnected(true);
+        }
+      }
+    }, MOCK_FALLBACK_MS);
+
     return () => {
       unsubscribe();
       clearInterval(interval);
+      clearTimeout(mockTimeout);
     };
-  }, [handleMessage]);
+  }, [handleMessage, deviceId, sensorType]);
 
   const refresh = useCallback(() => {
     // Request fresh data from server
@@ -428,6 +496,7 @@ export function useDeviceState(deviceId: string) {
   const deviceIdRef = useRef(deviceId);
   const stateRef = useRef(state);
   const commandIdRef = useRef(0); // Track command order to ignore stale responses
+  const usedMockRef = useRef(false);
 
   // Keep refs in sync
   useEffect(() => {
@@ -484,9 +553,24 @@ export function useDeviceState(deviceId: string) {
       setConnected(wsManager.isConnected() || false);
     }, 1000);
 
+    // Mock data fallback for device states
+    const mockTimeout = setTimeout(() => {
+      if (!usedMockRef.current) {
+        usedMockRef.current = true;
+        const mock = MOCK_DEVICE_STATES[deviceIdRef.current];
+        if (mock !== undefined) {
+          stateRef.current = mock;
+          setState(mock);
+          setLoading(false);
+          setConnected(true);
+        }
+      }
+    }, MOCK_FALLBACK_MS);
+
     return () => {
       unsubscribe();
       clearInterval(interval);
+      clearTimeout(mockTimeout);
     };
   }, [handleMessage]); // Only depends on stable handleMessage
 
