@@ -13,8 +13,8 @@ type OfficeMode = "focus" | "rest" | "manual" | "off";
 
 export function OfficeCard() {
   const [mode, setMode] = useState<OfficeMode>("focus");
-  const [manualTemp, setManualTemp] = useState(CLIMATE_TARGETS.manual.temp);
-  const [manualHumidity, setManualHumidity] = useState(CLIMATE_TARGETS.manual.humidity);
+  const [manualTemp, setManualTemp] = useState<number>(CLIMATE_TARGETS.manual.temp);
+  const [manualHumidity, setManualHumidity] = useState<number>(CLIMATE_TARGETS.manual.humidity);
   const [manualBrightness, setManualBrightness] = useState(180);
   const [manualColorTemp, setManualColorTemp] = useState(4000);
 
