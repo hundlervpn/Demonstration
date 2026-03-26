@@ -39,8 +39,8 @@ export default function OfficePage() {
   const humidifierOn = humidifier.isOn;
 
   // Manual mode target values
-  const [manualTargetTemp, setManualTargetTemp] = useState(CLIMATE_TARGETS.manual.temp);
-  const [manualTargetHumidity, setManualTargetHumidity] = useState(CLIMATE_TARGETS.manual.humidity);
+  const [manualTargetTemp, setManualTargetTemp] = useState<number>(CLIMATE_TARGETS.manual.temp);
+  const [manualTargetHumidity, setManualTargetHumidity] = useState<number>(CLIMATE_TARGETS.manual.humidity);
   const [manualBrightness, setManualBrightness] = useState(180);
   const [manualColorTemp, setManualColorTemp] = useState(4000);
 
