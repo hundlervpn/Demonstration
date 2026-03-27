@@ -5,6 +5,7 @@ interface AuthCode {
   code: string;
   verified: boolean;
   telegramUsername?: string;
+  telegramId?: number;
   createdAt: number;
 }
 
@@ -29,7 +30,7 @@ export function generateAuthCode(): string {
   return code;
 }
 
-export function verifyAuthCode(code: string, telegramUsername?: string): boolean {
+export function verifyAuthCode(code: string, telegramUsername?: string, telegramId?: number): boolean {
   const entry = AUTH_CODES.get(code);
   if (!entry) return false;
   if (Date.now() - entry.createdAt > CODE_TTL) {
@@ -38,15 +39,16 @@ export function verifyAuthCode(code: string, telegramUsername?: string): boolean
   }
   entry.verified = true;
   entry.telegramUsername = telegramUsername;
+  entry.telegramId = telegramId;
   return true;
 }
 
-export function checkAuthCode(code: string): { verified: boolean; telegramUsername?: string } {
+export function checkAuthCode(code: string): { verified: boolean; telegramUsername?: string; telegramId?: number } {
   const entry = AUTH_CODES.get(code);
   if (!entry) return { verified: false };
   if (Date.now() - entry.createdAt > CODE_TTL) {
     AUTH_CODES.delete(code);
     return { verified: false };
   }
-  return { verified: entry.verified, telegramUsername: entry.telegramUsername };
+  return { verified: entry.verified, telegramUsername: entry.telegramUsername, telegramId: entry.telegramId };
 }

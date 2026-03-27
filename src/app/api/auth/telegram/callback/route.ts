@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     const username = telegram_user || `tg_${telegram_id}` || "telegram_user";
-    const verified = verifyAuthCode(code, username);
+    const verified = verifyAuthCode(code, username, telegram_id ? Number(telegram_id) : undefined);
 
     if (!verified) {
       return NextResponse.json({ success: false, error: "Invalid or expired code" }, { status: 404 });

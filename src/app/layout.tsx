@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,7 +28,7 @@ export default function RootLayout({
         <div className="fixed top-[-20%] right-[-10%] w-[120vw] md:w-[50vw] h-[140%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-600/20 via-cyan-600/5 to-transparent -z-20 animate-wave-right pointer-events-none" />
         
         <div className="w-full max-w-md md:max-w-4xl lg:max-w-6xl min-h-screen bg-black/60 md:border-x border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] relative transition-all duration-300 z-0">
-          {children}
+          <AuthGuard>{children}</AuthGuard>
         </div>
       </body>
     </html>

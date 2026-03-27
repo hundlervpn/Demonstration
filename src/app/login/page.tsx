@@ -15,6 +15,12 @@ export default function LoginPage() {
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT || "vasilekdemobot";
 
+  // Redirect if already logged in
+  useEffect(() => {
+    const hasAuth = document.cookie.split(";").some(c => c.trim().startsWith("auth_token="));
+    if (hasAuth) router.replace("/");
+  }, [router]);
+
   const handleTelegramAuth = useCallback(async () => {
     setError("");
     try {
@@ -51,6 +57,9 @@ export default function LoginPage() {
           setPolling(false);
           const username = data.telegramUsername || "telegram_user";
           document.cookie = `auth_token=${encodeURIComponent(username)}; path=/; max-age=604800; SameSite=Lax`;
+          if (data.telegramId) {
+            document.cookie = `tg_id=${data.telegramId}; path=/; max-age=604800; SameSite=Lax`;
+          }
           setStep("success");
           setTimeout(() => router.push("/"), 1500);
         }

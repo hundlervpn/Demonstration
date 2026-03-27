@@ -1,8 +1,9 @@
 "use client";
 import { TopBar } from "@/components/TopBar";
 import { PageTransition } from "@/components/PageTransition";
-import { Send, Database, CheckCircle2, UserPlus, Trash2, Sliders, Check } from "lucide-react";
+import { Send, Database, CheckCircle2, UserPlus, Trash2, Sliders, Check, LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { wsManager } from "@/hooks/useSensorData";
 
 type FaceRole = "admin" | "resident" | "guest" | "courier" | "technician";
@@ -15,7 +16,31 @@ interface FaceProfile {
 }
 
 
+interface UserProfile {
+  username: string;
+  isGuest: boolean;
+  photoUrl: string | null;
+  telegramId: number | null;
+}
+
 export default function SettingsPage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    const tgId = document.cookie.split(";").map(c => c.trim()).find(c => c.startsWith("tg_id="))?.split("=")[1];
+    fetch(`/api/auth/profile${tgId ? `?tg_id=${tgId}` : ""}`)
+      .then(r => r.json())
+      .then(data => setProfile(data))
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = () => {
+    document.cookie = "auth_token=; path=/; max-age=0";
+    document.cookie = "tg_id=; path=/; max-age=0";
+    router.push("/login");
+  };
+
   const [notifications, setNotifications] = useState([
     { id: 'water', label: "Протечки воды", checked: true },
     { id: 'gas', label: "Утечка газа", checked: true },
@@ -101,6 +126,56 @@ export default function SettingsPage() {
       <TopBar title="Настройки" />
 
       <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5 max-w-md md:max-w-none mx-auto">
+        {/* Profile */}
+        <section className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 h-full flex flex-col md:col-span-2">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+              <User className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-medium">Профиль</h2>
+              <p className="text-sm text-gray-400">Информация об аккаунте</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-5">
+            {/* Avatar */}
+            <div className="w-20 h-20 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {profile?.photoUrl ? (
+                <img src={profile.photoUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-10 h-10 text-gray-500" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="text-lg font-medium text-white truncate">
+                {profile?.username || "..."}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`px-2.5 py-0.5 rounded-lg text-xs border ${
+                  profile?.isGuest
+                    ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                    : "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                }`}>
+                  {profile?.isGuest ? "Гостевой вход" : "Telegram"}
+                </span>
+                {profile?.telegramId && (
+                  <span className="text-xs text-gray-500">ID: {profile.telegramId}</span>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all text-red-400 text-sm flex-shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+              Выйти
+            </button>
+          </div>
+        </section>
+
         {/* CV Face Recognition */}
         <section className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 h-full flex flex-col">
           <div className="flex items-center gap-3 mb-6">
