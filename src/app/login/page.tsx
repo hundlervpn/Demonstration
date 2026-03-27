@@ -1,12 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { Send, UserCircle, Loader2, CheckCircle2, Copy, ExternalLink } from "lucide-react";
 
 type AuthStep = "choose" | "telegram-pending" | "success";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [step, setStep] = useState<AuthStep>("choose");
   const [code, setCode] = useState<string>("");
   const [copied, setCopied] = useState(false);
@@ -18,8 +16,8 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     const hasAuth = document.cookie.split(";").some(c => c.trim().startsWith("auth_token="));
-    if (hasAuth) router.replace("/");
-  }, [router]);
+    if (hasAuth) window.location.href = "/";
+  }, []);
 
   const handleTelegramAuth = useCallback(async () => {
     setError("");
@@ -36,8 +34,8 @@ export default function LoginPage() {
 
   const handleGuestEntry = useCallback(() => {
     document.cookie = "auth_token=guest; path=/; max-age=86400; SameSite=Lax";
-    router.push("/");
-  }, [router]);
+    window.location.href = "/";
+  }, []);
 
   const copyCode = useCallback(() => {
     navigator.clipboard.writeText(code);
@@ -61,7 +59,7 @@ export default function LoginPage() {
             document.cookie = `tg_id=${data.telegramId}; path=/; max-age=604800; SameSite=Lax`;
           }
           setStep("success");
-          setTimeout(() => router.push("/"), 1500);
+          setTimeout(() => { window.location.href = "/"; }, 1500);
         }
       } catch {
         // Ignore polling errors
@@ -79,7 +77,7 @@ export default function LoginPage() {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [polling, code, router]);
+  }, [polling, code]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-5">

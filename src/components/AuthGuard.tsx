@@ -1,9 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
 
@@ -19,11 +18,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       .some((c) => c.trim().startsWith("auth_token="));
 
     if (!hasAuth) {
-      router.replace("/login");
+      window.location.href = "/login";
     } else {
       setChecked(true);
     }
-  }, [pathname, router]);
+  }, [pathname]);
 
   if (!checked && pathname !== "/login") {
     return null;
