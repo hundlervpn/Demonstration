@@ -9,5 +9,27 @@ export async function GET(request: NextRequest) {
   }
 
   const result = checkAuthCode(code);
-  return NextResponse.json(result);
+
+  const response = NextResponse.json(result);
+
+  // Set auth cookie server-side when verified
+  if (result.verified) {
+    const username = result.telegramUsername || "telegram_user";
+    response.cookies.set("auth_token", username, {
+      path: "/",
+      maxAge: 604800,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+    if (result.telegramId) {
+      response.cookies.set("tg_id", String(result.telegramId), {
+        path: "/",
+        maxAge: 604800,
+        sameSite: "lax",
+        httpOnly: false,
+      });
+    }
+  }
+
+  return response;
 }

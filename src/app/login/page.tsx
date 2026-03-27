@@ -32,8 +32,8 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleGuestEntry = useCallback(() => {
-    document.cookie = "auth_token=guest; path=/; max-age=86400; SameSite=Lax";
+  const handleGuestEntry = useCallback(async () => {
+    await fetch("/api/auth/guest", { method: "POST" });
     window.location.href = "/";
   }, []);
 
@@ -53,11 +53,7 @@ export default function LoginPage() {
         const data = await res.json();
         if (data.verified) {
           setPolling(false);
-          const username = data.telegramUsername || "telegram_user";
-          document.cookie = `auth_token=${encodeURIComponent(username)}; path=/; max-age=604800; SameSite=Lax`;
-          if (data.telegramId) {
-            document.cookie = `tg_id=${data.telegramId}; path=/; max-age=604800; SameSite=Lax`;
-          }
+          // Cookie is set server-side by /api/auth/check response
           setStep("success");
           setTimeout(() => { window.location.href = "/"; }, 1500);
         }
