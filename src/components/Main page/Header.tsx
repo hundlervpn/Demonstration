@@ -5,8 +5,7 @@ export function Header() {
     <header>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold">Умный дом</h1>
-          <p className="text-sm text-gray-400">Главная панель управления</p>
+          <h1 className="text-3xl font-semibold">Василёчек</h1>
         </div>
 
         <div className="flex gap-2">

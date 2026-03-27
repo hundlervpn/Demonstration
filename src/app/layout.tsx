@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Умный дом",
-  description: "Панель управления умным домом",
+  title: "Василёчек",
+  description: "Василёчек — умный дом",
 };
 
 export default function RootLayout({

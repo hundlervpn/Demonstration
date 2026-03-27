@@ -138,21 +138,21 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
             {/* Avatar */}
-            <div className="w-20 h-20 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
               {profile?.photoUrl ? (
                 <img src={profile.photoUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <User className="w-10 h-10 text-gray-500" />
+                <User className="w-8 h-8 sm:w-10 sm:h-10 text-gray-500" />
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="text-lg font-medium text-white truncate">
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="text-base sm:text-lg font-medium text-white truncate">
                 {profile?.username || "..."}
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-1 flex-wrap">
                 <span className={`px-2.5 py-0.5 rounded-lg text-xs border ${
                   profile?.isGuest
                     ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
@@ -168,7 +168,7 @@ export default function SettingsPage() {
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all text-red-400 text-sm flex-shrink-0"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all text-red-400 text-sm flex-shrink-0 w-full sm:w-auto justify-center"
             >
               <LogOut className="w-4 h-4" />
               Выйти

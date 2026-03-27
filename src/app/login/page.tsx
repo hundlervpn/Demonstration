@@ -86,8 +86,7 @@ export default function LoginPage() {
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold">Умный дом</h1>
-          <p className="text-sm text-gray-400 mt-1">Панель управления</p>
+          <h1 className="text-2xl font-bold">Василёчек</h1>
         </div>
 
         {/* Choose method */}
